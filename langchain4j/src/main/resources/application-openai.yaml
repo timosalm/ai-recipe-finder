@@ -1,0 +1,11 @@
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key:
+      model-name: gpt-4o
+    embedding-model:
+      api-key: ${langchain4j.open-ai.chat-model.api-key}
+      model-name: text-embedding-ada-002
+    image-model:
+      api-key: ${langchain4j.open-ai.chat-model.api-key}
+      model-name: dall-e-3

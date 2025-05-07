@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="custom.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="wrapper">
+        <header>
+            <span class="title">Recipe Finder</span>
+            <span class="subtitle">powered by <span th:utext="${aiModel}" /></span>
+        </header>
+        <div class="content-wrapper">
+            <form action="#" th:action="@{/}" th:object="${fetchRecipeData}" method="post">
+                <label for="ingredients">Ingredients (comma separated):</label>
+                <input type="text" id="ingredients" th:field="*{ingredientsStr}" />
+                <input type="checkbox" id="prefer-available" th:field="*{preferAvailableIngredients}"  />
+                <label for="prefer-available" id="prefer-available-label">Use available ingredients</label>
+                <input type="checkbox" id="prefer-own-recipes" th:field="*{preferOwnRecipes}" />
+                <label for="prefer-own-recipes">Prefer own recipes</label>
+                <button type="submit">Find</button>
+            </form>
+            <div class="content" th:if="${recipe != null}">
+                <div class="text">
+                    <h2 th:text="${recipe.name}">Recipe Name</h2>
+                    <p th:text="${recipe.description}">Recipe Description</p>
+                    <h4>Ingredients</h4>
+                    <ul>
+                        <li th:each="ingredient : ${recipe.ingredients}" th:text="${ingredient}">Ingredient</li>
+                    </ul>
+                    <h4>Instructions</h4>
+                    <ul id="instructions">
+                        <li th:each="instruction : ${recipe.instructions}" th:text="${instruction}">Instruction</li>
+                    </ul>
+                </div>
+                <img th:src="${#strings.isEmpty(recipe.imageUrl) or #strings.contains(recipe.imageUrl, 'example') ? 'placeholder.png' : recipe.imageUrl}" id="recipe-img" alt="Recipe Image" class="image"/>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

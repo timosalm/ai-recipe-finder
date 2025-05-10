@@ -1,0 +1,9 @@
+semantickernel:
+  openai:
+    api-key: ${OPENAI_KEY}
+    chat-model:
+      model-name: gpt-4o
+    embedding-model:
+      model-name: text-embedding-ada-002
+    image-model:
+      model-name: dall-e-3

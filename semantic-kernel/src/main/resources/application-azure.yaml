@@ -1,0 +1,12 @@
+semantickernel:
+  azure-openai:
+    endpoint: ${AZURE_OPENAI_ENDPOINT}
+    api-key: ${AZURE_OPENAI_API_KEY}
+    chat-model:
+      deployment-name: gpt-4o
+      options:
+        temperature: 1.0
+    embedding-model:
+      deployment-name: gpt-4o
+    image-model:
+      deployment-name: dall-e-3

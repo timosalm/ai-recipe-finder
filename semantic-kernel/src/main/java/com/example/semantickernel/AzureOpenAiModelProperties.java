@@ -1,4 +1,4 @@
-package com.example;
+package com.example.semantickernel;
 
 import org.springframework.util.StringUtils;
 

@@ -1,0 +1,18 @@
+spring:
+  application.name: RecipeFinder
+  servlet.multipart:
+    max-file-size: 100MB
+    max-request-size: 100MB
+  data.redis:
+    host: localhost
+    port: 6379
+    username:
+    password:
+  profiles:
+    active: openai
+server.tomcat.max-swallow-size: -1
+
+logging.pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS
+
+app:
+  available-ingredients-in-fridge: bacon,onions

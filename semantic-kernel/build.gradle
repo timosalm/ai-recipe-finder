@@ -1,0 +1,51 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('semanticKernelVersion', '1.4.3')
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+	implementation "com.microsoft.semantic-kernel:semantickernel-api:${semanticKernelVersion}"
+	implementation "com.microsoft.semantic-kernel:semantickernel-aiservices-openai:${semanticKernelVersion}"
+	implementation "com.github.victools:jsonschema-generator"
+	implementation "com.github.victools:jsonschema-module-jackson"
+
+	implementation 'org.apache.commons:commons-lang3'
+
+	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "com.microsoft.semantic-kernel:semantickernel-bom:${semanticKernelVersion}"
+	}
+}
+
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

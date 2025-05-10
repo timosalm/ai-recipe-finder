@@ -1,7 +1,7 @@
 langchain4j:
   open-ai:
     chat-model:
-      api-key:
+      api-key: ${OPENAI_KEY}
       model-name: gpt-4o
     embedding-model:
       api-key: ${langchain4j.open-ai.chat-model.api-key}

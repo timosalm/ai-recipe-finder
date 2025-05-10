@@ -1,7 +1,7 @@
 Provide a recipe that includes in the best case all of the following ingredients plus the ingredients available at home which are ordered by highest priority.
 
 Ingredients: """
-{ingredients}
+{{ingredients}}
 """
 
 Add additional ingredients that are necessary for a good flavor or to create a more creative and complex meal.

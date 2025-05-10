@@ -31,6 +31,7 @@ dependencies {
 	implementation "dev.langchain4j:langchain4j-open-ai-spring-boot-starter:${langChain4jVersion}"
 	implementation "dev.langchain4j:langchain4j-azure-open-ai-spring-boot-starter:${langChain4jVersion}"
 
+	implementation "dev.langchain4j:langchain4j-redis-spring-boot-starter:1.0.0-alpha1"
 	implementation "dev.langchain4j:langchain4j-document-parser-apache-pdfbox:${langChain4jVersion}"
 
 	implementation 'org.apache.commons:commons-lang3'

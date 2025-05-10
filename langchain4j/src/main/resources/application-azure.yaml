@@ -1,9 +1,9 @@
 langchain4j:
   azure-open-ai:
     chat-model:
-      api-key:
+      api-key: ${AZURE_OPENAI_API_KEY}
       deployment-name: gpt-4o
-      endpoint: https://{your-resource-name}.openai.azure.com
+      endpoint: ${AZURE_OPENAI_ENDPOINT}
       temperature: 1.0
     embedding-model:
       api-key: ${langchain4j.azure-open-ai.chat-model.api-key}

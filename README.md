@@ -3,7 +3,11 @@
 Demo on how easy it is to build AI-driven applications with Spring Boot and different Java AI frameworks. 
 It also shows how to implement advanced techniques for the adaption of foundation models with Function Calling and RAG.
 
-***Note: A Spring AI Recipe Finder implementation using the Model Context Protocol is available [here](https://github.com/timosalm/spring-ai-recipe-finder-mcp).***
+AI framework implementations:
+- [LangChain4J](langchain4j)
+- [Semantic Kernel](semantic-kernel)
+- [Spring AI (external)](https://github.com/timosalm/spring-ai-recipe-finder)
+- [Spring AI MCP (external)](https://github.com/timosalm/spring-ai-recipe-finder-mcp)
 
 ![](docs/images/ui-sample.png)
 
@@ -23,12 +27,12 @@ From version 3.1 Llama is supporting Function Calling even if it's not working w
 By enabling the "ollama-compose" Spring profile, the llama3.1 model will be automatically started and configured with docker compose.
 Depending on your system (e.g. ARM macs) this is not a recommended setup due to performance reasons.
 ```
-export SPRING_PROFILES_ACTIVE=ollama-compose
+export SPRING_PROFILES_ACTIVE=ollama,ollama-compose
 ```
 ### OpenAI
 Set the API key via an environment variable or in [application-openai.yaml](src/main/resources/application-openai.yaml).
 ```
-export SPRING_AI_OPENAI_API_KEY=<INSERT KEY HERE>
+export OPENAI_KEY=<INSERT KEY HERE>
 ```
 Run your application with the "openai" Spring Profile.
 ```
@@ -38,8 +42,8 @@ export SPRING_PROFILES_ACTIVE=openai
 ### Azure OpenAI
 Set the API key and endpoint via environment variables or in [application-azure.yaml](src/main/resources/application-azure.yaml).
 ```
-export SPRING_AI_AZURE_OPENAI_API_KEY=<INSERT KEY HERE>
-export SPRING_AI_AZURE_OPENAI_ENDPOINT=https://{your-resource-name}.openai.azure.com
+export AZURE_OPENAI_API_KEY=<INSERT KEY HERE>
+export AZURE_OPENAI_ENDPOINT=https://{your-resource-name}.openai.azure.com
 ```
 
 Make sure the deployment names of the models match exactly what's in your [application-azure.yaml](src/main/resources/application-azure.yaml) configuration file.
@@ -62,8 +66,8 @@ On your local machine, a Redis database is automatically started and configured 
 Open [http://localhost:8080](http://localhost:8080) in your browser. 
 Enter the ingredients (e.g. "Cheese") you want to find a recipe for in the form and press the "find" button.
 
-## Function Calling 
-By checking the "Prefer available ingredients" checkbox, [Function Calling](https://docs.spring.io/spring-ai/reference/1.0/concepts.html#_function_calling) will be enabled.
+## Tool Calling 
+By checking the "Prefer available ingredients" checkbox, Tool Calling will be enabled.
 As the functionality the API call to check the available ingredients in the fridge are not yet implemented, they can be configured via the
 `app.available-ingredients-in-fridge` property in [application.yaml](src/main/resources/application.yaml).
 
@@ -72,7 +76,7 @@ With the input "Cheese", you should get a recipe with cheese and bacon.
 ![](docs/images/ui-sample-function-calling.png)
 
 ## Retrieval-Augmented Generation(RAG)
-By checking the "Prefer own recipes" checkbox, [Retrieval-Augmented Generation](https://docs.spring.io/spring-ai/reference/1.0/concepts.html#concept-rag) will be enabled.
+By checking the "Prefer own recipes" checkbox, Retrieval-Augmented Generation will be enabled.
 
 To upload your own PDF documents for recipes to the vector database, there is a REST API endpoint implemented. 
 ```
@@ -80,22 +84,3 @@ curl -XPOST -F "file=@$PWD/german_recipes.pdf" -F "pageBottomMargin=50" http://l
 ```
 Based on the sample recipes part of this repository, with the input "Cheese", you should get a recipe that goes in the direction of a cheese spaetzle muffin.
 ![](docs/images/ui-sample-rag.png)
-
-# Kubernetes Deployment
-
-## Ollama
-```
-kubectl apply -f deployment/kubernetes/ollama.yaml
-```
-
-## OpenAI
-```
-export SPRING_AI_AZURE_OPENAI_API_KEY=<INSERT KEY HERE>
-export SPRING_AI_AZURE_OPENAI_ENDPOINT=<INSERT ENDPOINT URL HERE>
-envsubst < deployment/kubernetes/openai.yaml | kubectl apply -f -
-```
-## Azure OpenAI
-```
-export SPRING_AI_OPENAI_API_KEY=<INSERT KEY HERE>
-envsubst < deployment/kubernetes/azure-openai.yaml | kubectl apply -f -
-```

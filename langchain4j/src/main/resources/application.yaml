@@ -17,13 +17,17 @@ logging.pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS
 app:
   available-ingredients-in-fridge: bacon,onions
 
+langchain4j.redis:
+  enabled: true
+  host: 127.0.0.1
 ---
 spring.config.activate.on-profile: ollama
 langchain4j.ollama:
   chat-model:
-    base-url: http://localhost:11434
+    base-url: http://127.0.0.1:11434
     model-name: llama3.2
     temperature: 0.5
   embedding-model:
     base-url: ${langchain4j.ollama.chat-model.base-url}
     model-name: llama3.2
+

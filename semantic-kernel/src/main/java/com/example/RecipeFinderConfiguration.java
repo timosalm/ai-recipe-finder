@@ -4,8 +4,6 @@ import com.example.recipe.RecipeService;
 import com.microsoft.semantickernel.Kernel;
 import com.microsoft.semantickernel.plugin.KernelPluginFactory;
 import com.microsoft.semantickernel.services.chatcompletion.ChatCompletionService;
-import com.microsoft.semantickernel.services.textcompletion.TextGenerationService;
-import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -15,11 +13,9 @@ class RecipeFinderConfiguration {
 
     @Primary
     @Bean
-    public Kernel defaultKernel(ChatCompletionService chatCompletionService,
-                TextEmbeddingGenerationService textEmbeddingGenerationService) {
+    public Kernel defaultKernel(ChatCompletionService chatCompletionService) {
         return Kernel.builder()
                 .withAIService(ChatCompletionService.class, chatCompletionService)
-                //.withAIService(TextEmbeddingGenerationService.class, textEmbeddingGenerationService)
                 .build();
     }
 

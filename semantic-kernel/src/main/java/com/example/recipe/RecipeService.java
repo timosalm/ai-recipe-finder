@@ -1,12 +1,21 @@
 package com.example.recipe;
 
+import com.example.semantickernel.DocumentEmbedding;
 import com.microsoft.semantickernel.Kernel;
+import com.microsoft.semantickernel.data.vectorstorage.VectorStore;
+import com.microsoft.semantickernel.data.vectorstorage.VectorStoreRecordCollectionOptions;
+import com.microsoft.semantickernel.data.vectorstorage.options.VectorSearchOptions;
 import com.microsoft.semantickernel.orchestration.InvocationContext;
 import com.microsoft.semantickernel.orchestration.PromptExecutionSettings;
 import com.microsoft.semantickernel.orchestration.ToolCallBehavior;
 import com.microsoft.semantickernel.semanticfunctions.KernelFunctionArguments;
 import com.microsoft.semantickernel.semanticfunctions.annotations.DefineKernelFunction;
+import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
+import org.apache.pdfbox.multipdf.Splitter;
+import org.apache.pdfbox.pdfparser.PDFParser;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,13 +27,20 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class RecipeService {
 
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
+	private static String VECTORSTORE_COLLECTION_NAME = "recipes";
+
 	private final Kernel defaultKernel;
 	private final Kernel kernelWithToolCalling;
+	private final VectorStore vectorStore;
+	private final VectorStoreRecordCollectionOptions collectionOptions;
+	private final TextEmbeddingGenerationService embeddingGenerationService;
 
 	@Value("classpath:/prompts/recipe-for-ingredients")
 	private Resource recipeForIngredientsPromptResource;
@@ -41,23 +57,44 @@ public class RecipeService {
 	@Value("${app.available-ingredients-in-fridge}")
     private List<String> availableIngredientsInFridge;
 
-    RecipeService(Kernel defaultKernel,
-				  @Lazy @Qualifier("kernelWithToolCalling") Kernel kernelWithToolCalling) {
+    RecipeService(Kernel defaultKernel, @Lazy @Qualifier("kernelWithToolCalling") Kernel kernelWithToolCalling,
+				  VectorStore vectorStore, VectorStoreRecordCollectionOptions<String, DocumentEmbedding> collectionOptions,
+				  TextEmbeddingGenerationService embeddingGenerationService) {
 		this.defaultKernel = defaultKernel;
 		this.kernelWithToolCalling = kernelWithToolCalling;
+		this.vectorStore = vectorStore;
+		this.collectionOptions = collectionOptions;
+		this.embeddingGenerationService = embeddingGenerationService;
 	}
 
     void addRecipeDocumentForRag(Resource pdfResource) throws IOException {
         log.info("Add recipe document {} for rag", pdfResource.getFilename());
-		throw new NotImplementedException();
 
-/*
-        var documentParser = new ApachePdfBoxDocumentParser();
-        var document = documentParser.parse(pdfResource.getInputStream());
-        embeddingStoreIngestor.ingest(document);
-        */
+		var pdfParser = new PDFParser(new RandomAccessReadBuffer(pdfResource.getInputStream()));
+		var document = pdfParser.parse();
+		var documents = new Splitter().split(document);
 
-    }
+		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
+		collection.createCollectionIfNotExistsAsync().block();
+
+		var textStripper = new PDFTextStripper();
+		var documentsEmbeddings = documents.stream().map(d -> {
+			try {
+				var content = textStripper.getText(d);
+				var embedding = embeddingGenerationService.generateEmbeddingAsync(content).block().getVector();
+				return new DocumentEmbedding(UUID.randomUUID().toString(), embedding);
+			} catch (IOException e) {
+				return null;
+			}
+		}).filter((Objects::nonNull)).toList();
+
+		collection.upsertBatchAsync(documentsEmbeddings, null).block();
+
+		///  WIP
+		var queryVector = embeddingGenerationService.generateEmbeddingAsync("Cheese").block().getVector();
+		var results = collection.searchAsync(queryVector, VectorSearchOptions.createDefault("embedding")).block();
+		System.out.println(results);
+	}
 
     Recipe fetchRecipeFor(List<String> ingredients, boolean preferAvailableIngredients, boolean preferOwnRecipes) throws IOException {
         Recipe recipe;

@@ -5,6 +5,12 @@ import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.core.credential.KeyCredential;
 import com.microsoft.semantickernel.aiservices.openai.chatcompletion.OpenAIChatCompletion;
 import com.microsoft.semantickernel.aiservices.openai.textembedding.OpenAITextEmbeddingGenerationService;
+import com.microsoft.semantickernel.data.redis.RedisHashSetVectorStoreRecordCollectionOptions;
+import com.microsoft.semantickernel.data.redis.RedisStorageType;
+import com.microsoft.semantickernel.data.redis.RedisVectorStore;
+import com.microsoft.semantickernel.data.redis.RedisVectorStoreOptions;
+import com.microsoft.semantickernel.data.vectorstorage.VectorStore;
+import com.microsoft.semantickernel.data.vectorstorage.VectorStoreRecordCollectionOptions;
 import com.microsoft.semantickernel.services.chatcompletion.ChatCompletionService;
 import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,6 +19,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisPooled;
 
 @Configuration
 class SemanticKernelAutoConfiguration {
@@ -111,6 +119,25 @@ class SemanticKernelAutoConfiguration {
 				.withModelId(modelProperties.getModelName())
 				.withOpenAIAsyncClient(client)
 				.build();
+	}
+
+	@ConditionalOnProperty(name = "semantickernel.redis.host")
+	@ConfigurationProperties("semantickernel.redis")
+	@Bean
+	VectorStoreProperties vectorStoreProperties() {
+		return new VectorStoreProperties();
+	}
+
+	@Bean
+	VectorStore vectorStore(VectorStoreProperties properties) {
+		var client = new JedisPooled(new HostAndPort(properties.getHost(), properties.getPort()));
+		var options = RedisVectorStoreOptions.builder().withStorageType(RedisStorageType.HASH_SET).build();
+		return RedisVectorStore.builder().withClient(client).withOptions(options).build();
+	}
+
+	@Bean
+	VectorStoreRecordCollectionOptions<String, DocumentEmbedding> vectorStoreRecordCollection() {
+		return RedisHashSetVectorStoreRecordCollectionOptions.<DocumentEmbedding>builder().withRecordClass(DocumentEmbedding.class).build();
 	}
 
 	@Bean

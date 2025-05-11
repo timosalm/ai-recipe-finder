@@ -14,5 +14,9 @@ server.tomcat.max-swallow-size: -1
 
 logging.pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS
 
+semantickernel.redis:
+  host: 127.0.0.1
+  port: 6379
+
 app:
   available-ingredients-in-fridge: bacon,onions

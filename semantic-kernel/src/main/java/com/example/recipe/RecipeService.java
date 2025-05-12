@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Service
@@ -90,25 +91,18 @@ public class RecipeService {
 		collection.createCollectionIfNotExistsAsync().block();
 
 		var textStripper = new PDFTextStripper();
-		List<DocumentEmbedding> documentsEmbeddings = documents.stream().map(d -> {
+		var documentsContent = documents.stream().map(d -> {
 			try {
-				var content = textStripper.getText(d);
-				var embedding = embeddingGenerationService.generateEmbeddingAsync(content).block().getVector();
-				return new DocumentEmbedding(UUID.randomUUID().toString(), embedding, content);
+				return textStripper.getText(d);
 			} catch (IOException e) {
 				return null;
 			}
 		}).filter((Objects::nonNull)).toList();
-		/*
-		var ids = (List<String>) collection.upsertBatchAsync(documentsEmbeddings, null).block();
-		var data = (List<DocumentEmbedding>)collection.<String>getBatchAsync(ids, new GetRecordOptions(true)).block();
-
-		System.out.println(data);
-
-		var queryVector = embeddingGenerationService.generateEmbeddingAsync("Cheese").block().getVector();
-		var results = collection.searchAsync(queryVector, VectorSearchOptions.createDefault("embedding")).block();
-		System.out.println(results);*/
-
+		var embeddings = embeddingGenerationService.generateEmbeddingsAsync(documentsContent).block();
+		var documentsEmbeddings = IntStream.range(0, documentsContent.size())
+				.mapToObj(i -> new DocumentEmbedding(UUID.randomUUID().toString(), embeddings.get(i).getVector(), documentsContent.get(i)))
+				.toList();
+		collection.upsertBatchAsync(documentsEmbeddings, null).block();
 	}
 
     Recipe fetchRecipeFor(List<String> ingredients, boolean preferAvailableIngredients, boolean preferOwnRecipes) throws IOException {

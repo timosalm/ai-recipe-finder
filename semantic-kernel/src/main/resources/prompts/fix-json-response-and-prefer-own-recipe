@@ -1,7 +1,0 @@
-As you can see in the provided JSON schema, the ingredients are just a list of strings.
-The imageUrl value should be an empty String
-Ensure the JSON output is always valid without e.g. missing any parentheses.
-
-If one of the included recipes includes those ingredients, provide one of these recipes unchanged!
-Remove any text formatting like uppercase.
-

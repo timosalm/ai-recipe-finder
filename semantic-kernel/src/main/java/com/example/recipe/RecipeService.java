@@ -2,13 +2,23 @@ package com.example.recipe;
 
 import com.example.semantickernel.DocumentEmbedding;
 import com.microsoft.semantickernel.Kernel;
+import com.microsoft.semantickernel.data.VectorStoreTextSearch;
+import com.microsoft.semantickernel.data.VectorStoreTextSearchOptions;
+import com.microsoft.semantickernel.data.textsearch.DefaultTextSearchStringMapper;
+import com.microsoft.semantickernel.data.textsearch.TextSearchOptions;
+import com.microsoft.semantickernel.data.vectorsearch.VectorSearchResults;
+import com.microsoft.semantickernel.data.vectorsearch.VectorizableTextSearch;
+import com.microsoft.semantickernel.data.vectorsearch.VectorizedSearch;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStore;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStoreRecordCollectionOptions;
+import com.microsoft.semantickernel.data.vectorstorage.options.GetRecordOptions;
 import com.microsoft.semantickernel.data.vectorstorage.options.VectorSearchOptions;
 import com.microsoft.semantickernel.orchestration.InvocationContext;
 import com.microsoft.semantickernel.orchestration.PromptExecutionSettings;
 import com.microsoft.semantickernel.orchestration.ToolCallBehavior;
 import com.microsoft.semantickernel.semanticfunctions.KernelFunctionArguments;
+import com.microsoft.semantickernel.semanticfunctions.PromptTemplateConfig;
+import com.microsoft.semantickernel.semanticfunctions.PromptTemplateFactory;
 import com.microsoft.semantickernel.semanticfunctions.annotations.DefineKernelFunction;
 import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
 import org.apache.commons.lang3.NotImplementedException;
@@ -23,12 +33,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 public class RecipeService {
@@ -74,26 +86,29 @@ public class RecipeService {
 		var document = pdfParser.parse();
 		var documents = new Splitter().split(document);
 
-		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
+		var collection = vectorStore.<String, DocumentEmbedding>getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
 		collection.createCollectionIfNotExistsAsync().block();
 
 		var textStripper = new PDFTextStripper();
-		var documentsEmbeddings = documents.stream().map(d -> {
+		List<DocumentEmbedding> documentsEmbeddings = documents.stream().map(d -> {
 			try {
 				var content = textStripper.getText(d);
 				var embedding = embeddingGenerationService.generateEmbeddingAsync(content).block().getVector();
-				return new DocumentEmbedding(UUID.randomUUID().toString(), embedding);
+				return new DocumentEmbedding(UUID.randomUUID().toString(), embedding, content);
 			} catch (IOException e) {
 				return null;
 			}
 		}).filter((Objects::nonNull)).toList();
+		/*
+		var ids = (List<String>) collection.upsertBatchAsync(documentsEmbeddings, null).block();
+		var data = (List<DocumentEmbedding>)collection.<String>getBatchAsync(ids, new GetRecordOptions(true)).block();
 
-		collection.upsertBatchAsync(documentsEmbeddings, null).block();
+		System.out.println(data);
 
-		///  WIP
 		var queryVector = embeddingGenerationService.generateEmbeddingAsync("Cheese").block().getVector();
 		var results = collection.searchAsync(queryVector, VectorSearchOptions.createDefault("embedding")).block();
-		System.out.println(results);
+		System.out.println(results);*/
+
 	}
 
     Recipe fetchRecipeFor(List<String> ingredients, boolean preferAvailableIngredients, boolean preferOwnRecipes) throws IOException {
@@ -159,9 +174,43 @@ public class RecipeService {
         return availableIngredientsInFridge;
     }
 
-	private Recipe fetchRecipeWithRagFor(String ingredientsStr) {
-		https://github.com/Azure-Samples/azure-search-openai-demo-java
-		throw new NotImplementedException();
+	// WIP
+	private Recipe fetchRecipeWithRagFor(String ingredientsStr) throws IOException {
+
+		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
+
+		// Retrieve
+		var userPrompt = PromptTemplateFactory.build(
+				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
+		).renderAsync(defaultKernel, arguments, null).block();
+
+		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
+		collection.createCollectionIfNotExistsAsync().block();
+
+		var vectorStoreTextSearch = VectorStoreTextSearch.builder()
+				.withTextEmbeddingGenerationService(embeddingGenerationService)
+				.withVectorizedSearch(collection).build();
+		var results = vectorStoreTextSearch.getSearchResultsAsync(userPrompt, TextSearchOptions.createDefault()).block();
+
+		var combinedPromptTemplate = "";/*String.join("\n\n",
+				Stream.concat(results.getResults().stream(),
+						List.of(systemPrompt, userPromptTemplate, ragSystemPrompt).stream()).toList());*/
+
+		var promptExecutionSettings = PromptExecutionSettings.builder()
+				.withJsonSchemaResponseFormat(Recipe.class)
+				.withMaxTokens(800)
+				.build();
+
+		var invocationContext = InvocationContext.builder()
+				.withPromptExecutionSettings(promptExecutionSettings)
+				.build();
+
+		return 	kernelWithToolCalling.invokePromptAsync(combinedPromptTemplate, arguments, invocationContext)
+				.withResultTypeAutoConversion(Recipe.class)
+				.block().getResult();
 	}
 
 	private Recipe fetchRecipeWithRagAndToolCallingFor(String ingredientsStr) {

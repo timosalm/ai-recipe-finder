@@ -4,7 +4,7 @@ Demo on how easy it is to build AI-driven applications with Spring Boot and diff
 It also shows how to implement advanced techniques for the adaption of foundation models with Function Calling and RAG.
 
 AI framework implementations:
-- [LangChain4J](langchain4j)
+- [LangChain4j](langchain4j)
 - [Semantic Kernel](semantic-kernel)
 - [Spring AI (external)](https://github.com/timosalm/spring-ai-recipe-finder)
 - [Spring AI MCP (external)](https://github.com/timosalm/spring-ai-recipe-finder-mcp)

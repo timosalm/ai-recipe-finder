@@ -15,7 +15,6 @@ import com.microsoft.semantickernel.semanticfunctions.PromptTemplateConfig;
 import com.microsoft.semantickernel.semanticfunctions.PromptTemplateFactory;
 import com.microsoft.semantickernel.semanticfunctions.annotations.DefineKernelFunction;
 import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdfparser.PDFParser;

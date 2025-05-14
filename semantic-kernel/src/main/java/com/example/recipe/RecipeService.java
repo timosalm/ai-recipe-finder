@@ -2,16 +2,10 @@ package com.example.recipe;
 
 import com.example.semantickernel.DocumentEmbedding;
 import com.microsoft.semantickernel.Kernel;
-import com.microsoft.semantickernel.data.VectorStoreTextSearch;
-import com.microsoft.semantickernel.data.VectorStoreTextSearchOptions;
-import com.microsoft.semantickernel.data.textsearch.DefaultTextSearchStringMapper;
-import com.microsoft.semantickernel.data.textsearch.TextSearchOptions;
 import com.microsoft.semantickernel.data.vectorsearch.VectorSearchResults;
-import com.microsoft.semantickernel.data.vectorsearch.VectorizableTextSearch;
 import com.microsoft.semantickernel.data.vectorsearch.VectorizedSearch;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStore;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStoreRecordCollectionOptions;
-import com.microsoft.semantickernel.data.vectorstorage.options.GetRecordOptions;
 import com.microsoft.semantickernel.data.vectorstorage.options.VectorSearchOptions;
 import com.microsoft.semantickernel.orchestration.InvocationContext;
 import com.microsoft.semantickernel.orchestration.PromptExecutionSettings;
@@ -33,7 +27,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -103,6 +96,17 @@ public class RecipeService {
 				.mapToObj(i -> new DocumentEmbedding(UUID.randomUUID().toString(), embeddings.get(i).getVector(), documentsContent.get(i)))
 				.toList();
 		collection.upsertBatchAsync(documentsEmbeddings, null).block();
+
+		// Delete me
+		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", "Cheese").build();
+		var userPrompt = PromptTemplateFactory.build(
+				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
+		).renderAsync(defaultKernel, arguments, null).block();
+
+		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
+		var search = ((VectorizedSearch<DocumentEmbedding>)collection).searchAsync(promptEmbedding.getVector(),VectorSearchOptions.createDefault("embedding")).block();
+		System.out.println(search.getTotalCount());
 	}
 
     Recipe fetchRecipeFor(List<String> ingredients, boolean preferAvailableIngredients, boolean preferOwnRecipes) throws IOException {
@@ -168,12 +172,11 @@ public class RecipeService {
         return availableIngredientsInFridge;
     }
 
-	// WIP
 	private Recipe fetchRecipeWithRagFor(String ingredientsStr) throws IOException {
 
 		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
-		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var userPromptTemplate = recipeForIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
 
 		// Retrieve
@@ -184,14 +187,16 @@ public class RecipeService {
 		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
 		collection.createCollectionIfNotExistsAsync().block();
 
-		var vectorStoreTextSearch = VectorStoreTextSearch.builder()
-				.withTextEmbeddingGenerationService(embeddingGenerationService)
-				.withVectorizedSearch(collection).build();
-		var results = vectorStoreTextSearch.getSearchResultsAsync(userPrompt, TextSearchOptions.createDefault()).block();
+		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
+		var retrievalResult = collection.searchAsync(promptEmbedding.getVector(),
+				VectorSearchOptions.createDefault("embedding")).block();
+		var documents = ((VectorSearchResults<DocumentEmbedding>)retrievalResult).getResults().stream()
+				.map(r -> r.getRecord().getContent()).toList();
 
-		var combinedPromptTemplate = "";/*String.join("\n\n",
-				Stream.concat(results.getResults().stream(),
-						List.of(systemPrompt, userPromptTemplate, ragSystemPrompt).stream()).toList());*/
+		// Augment
+		var combinedPromptTemplate = String.join("\n\n",
+				Stream.concat(documents.stream(),
+						List.of(systemPrompt, userPromptTemplate, ragSystemPrompt).stream()).toList());
 
 		var promptExecutionSettings = PromptExecutionSettings.builder()
 				.withJsonSchemaResponseFormat(Recipe.class)
@@ -207,7 +212,43 @@ public class RecipeService {
 				.block().getResult();
 	}
 
-	private Recipe fetchRecipeWithRagAndToolCallingFor(String ingredientsStr) {
-		throw new NotImplementedException();
+	private Recipe fetchRecipeWithRagAndToolCallingFor(String ingredientsStr) throws IOException {
+		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
+
+		// Retrieve
+		var userPrompt = PromptTemplateFactory.build(
+				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
+		).renderAsync(defaultKernel, arguments, null).block();
+
+		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
+		collection.createCollectionIfNotExistsAsync().block();
+
+		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
+		var retrievalResult = collection.searchAsync(promptEmbedding.getVector(),
+				VectorSearchOptions.createDefault("embedding")).block();
+		var documents = ((VectorSearchResults<DocumentEmbedding>)retrievalResult).getResults().stream()
+				.map(r -> r.getRecord().getContent()).toList();
+
+		// Augment
+		var combinedPromptTemplate = String.join("\n\n",
+				Stream.concat(documents.stream(),
+						List.of(systemPrompt, userPromptTemplate, ragSystemPrompt).stream()).toList());
+
+		var promptExecutionSettings = PromptExecutionSettings.builder()
+				.withJsonSchemaResponseFormat(Recipe.class)
+				.withMaxTokens(800)
+				.build();
+
+		var invocationContext = InvocationContext.builder()
+				.withPromptExecutionSettings(promptExecutionSettings)
+				.withToolCallBehavior(ToolCallBehavior.allowAllKernelFunctions(true))
+				.build();
+
+		return 	kernelWithToolCalling.invokePromptAsync(combinedPromptTemplate, arguments, invocationContext)
+				.withResultTypeAutoConversion(Recipe.class)
+				.block().getResult();
 	}
 }

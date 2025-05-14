@@ -35,11 +35,14 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static com.example.RecipeFinderConfiguration.RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME;
+
 @Service
 public class RecipeService {
 
     private static final Logger log = LoggerFactory.getLogger(RecipeService.class);
-	private static String VECTORSTORE_COLLECTION_NAME = "recipes";
+	private static final String VECTORSTORE_COLLECTION_NAME = "recipes";
+	private static final String TOOL_NAME_RECIPE_DOCUMENTS = "retrieve_documents";
 
 	private final Kernel defaultKernel;
 	private final Kernel kernelWithToolCalling;
@@ -95,17 +98,6 @@ public class RecipeService {
 				.mapToObj(i -> new DocumentEmbedding(UUID.randomUUID().toString(), embeddings.get(i).getVector(), documentsContent.get(i)))
 				.toList();
 		collection.upsertBatchAsync(documentsEmbeddings, null).block();
-
-		// Delete me
-		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
-		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", "Cheese").build();
-		var userPrompt = PromptTemplateFactory.build(
-				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
-		).renderAsync(defaultKernel, arguments, null).block();
-
-		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
-		var search = ((VectorizedSearch<DocumentEmbedding>)collection).searchAsync(promptEmbedding.getVector(),VectorSearchOptions.createDefault("embedding")).block();
-		System.out.println(search.getTotalCount());
 	}
 
     Recipe fetchRecipeFor(List<String> ingredients, boolean preferAvailableIngredients, boolean preferOwnRecipes) throws IOException {
@@ -154,9 +146,10 @@ public class RecipeService {
 				.withMaxTokens(800)
 				.build();
 
+		var fetchIngredientsAvailableAtHomeTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, "fetch_ingredients_available_at_home");
 		var invocationContext = InvocationContext.builder()
 				.withPromptExecutionSettings(promptExecutionSettings)
-				.withToolCallBehavior(ToolCallBehavior.allowAllKernelFunctions(true))
+				.withToolCallBehavior(ToolCallBehavior.requireKernelFunction(fetchIngredientsAvailableAtHomeTool))
 				.build();
 
 		return 	kernelWithToolCalling.invokePromptAsync(combinedPromptTemplate, arguments, invocationContext)
@@ -172,26 +165,17 @@ public class RecipeService {
     }
 
 	private Recipe fetchRecipeWithRagFor(String ingredientsStr) throws IOException {
-
 		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var userPromptTemplate = recipeForIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
 
 		// Retrieve
-		var userPrompt = PromptTemplateFactory.build(
-				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
-		).renderAsync(defaultKernel, arguments, null).block();
-
-		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
-		collection.createCollectionIfNotExistsAsync().block();
-
-		// Similar functionality provided by VectorStoreTextSearch.getSearchResultsAsync
-		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
-		var retrievalResult = collection.searchAsync(promptEmbedding.getVector(),
-				VectorSearchOptions.createDefault("embedding")).block();
-		var documents = ((VectorSearchResults<DocumentEmbedding>)retrievalResult).getResults().stream()
-				.map(r -> r.getRecord().getContent()).toList();
+		var retrieveDocumentsTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, TOOL_NAME_RECIPE_DOCUMENTS);
+		var functionArguments = KernelFunctionArguments.builder().withVariable("userPromptTemplate", userPromptTemplate).withVariable("ingredientsStr", ingredientsStr).build();
+		List<String> documents = retrieveDocumentsTool.invokeAsync(kernelWithToolCalling)
+				.withArguments(functionArguments)
+				.withResultType(List.class).block().getResult();
 
 		// Augment
 		var combinedPromptTemplate = String.join("\n\n",
@@ -212,13 +196,11 @@ public class RecipeService {
 				.block().getResult();
 	}
 
-	private Recipe fetchRecipeWithRagAndToolCallingFor(String ingredientsStr) throws IOException {
-		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
-		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
-		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+	@DefineKernelFunction(name = TOOL_NAME_RECIPE_DOCUMENTS, description = "Retrieves related documents with recipes for a user prompt from the vector store",
+			returnType = "java.util.List")
+	public List<String> retrieveDocuments(String userPromptTemplate, String ingredientsStr) {
+		log.info("Retrieve documents from vector store");
 		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
-
-		// Retrieve
 		var userPrompt = PromptTemplateFactory.build(
 				PromptTemplateConfig.builder().withTemplate(userPromptTemplate).build()
 		).renderAsync(defaultKernel, arguments, null).block();
@@ -226,11 +208,26 @@ public class RecipeService {
 		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
 		collection.createCollectionIfNotExistsAsync().block();
 
+		// Similar functionality provided by VectorStoreTextSearch.getSearchResultsAsync
 		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
 		var retrievalResult = collection.searchAsync(promptEmbedding.getVector(),
 				VectorSearchOptions.createDefault("embedding")).block();
-		var documents = ((VectorSearchResults<DocumentEmbedding>)retrievalResult).getResults().stream()
+		return ((VectorSearchResults<DocumentEmbedding>)retrievalResult).getResults().stream()
 				.map(r -> r.getRecord().getContent()).toList();
+	}
+
+	private Recipe fetchRecipeWithRagAndToolCallingFor(String ingredientsStr) throws IOException {
+		var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var ragSystemPrompt = preferOwnRecipePromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var userPromptTemplate = recipeForAvailableIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
+		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
+
+		// Retrieve
+		var retrieveDocumentsTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, TOOL_NAME_RECIPE_DOCUMENTS);
+		var functionArguments = KernelFunctionArguments.builder().withVariable("userPromptTemplate", userPromptTemplate).withVariable("ingredientsStr", ingredientsStr).build();
+		List<String> documents = retrieveDocumentsTool.invokeAsync(kernelWithToolCalling)
+				.withArguments(functionArguments)
+				.withResultType(List.class).block().getResult();
 
 		// Augment
 		var combinedPromptTemplate = String.join("\n\n",
@@ -242,9 +239,10 @@ public class RecipeService {
 				.withMaxTokens(800)
 				.build();
 
+		var fetchIngredientsAvailableAtHomeTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, "fetch_ingredients_available_at_home");
 		var invocationContext = InvocationContext.builder()
 				.withPromptExecutionSettings(promptExecutionSettings)
-				.withToolCallBehavior(ToolCallBehavior.allowAllKernelFunctions(true))
+				.withToolCallBehavior(ToolCallBehavior.requireKernelFunction(fetchIngredientsAvailableAtHomeTool))
 				.build();
 
 		return 	kernelWithToolCalling.invokePromptAsync(combinedPromptTemplate, arguments, invocationContext)

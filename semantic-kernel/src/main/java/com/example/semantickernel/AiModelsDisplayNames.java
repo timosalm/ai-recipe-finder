@@ -1,10 +1,7 @@
 package com.example.semantickernel;
 
 import com.microsoft.semantickernel.aiservices.openai.chatcompletion.OpenAIChatCompletion;
-import com.microsoft.semantickernel.aiservices.openai.textcompletion.OpenAITextGenerationService;
 import com.microsoft.semantickernel.services.chatcompletion.ChatCompletionService;
-import com.microsoft.semantickernel.services.textcompletion.TextGenerationService;
-import com.microsoft.semantickernel.services.textembedding.TextEmbeddingGenerationService;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;

@@ -187,6 +187,7 @@ public class RecipeService {
 		var collection = vectorStore.getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
 		collection.createCollectionIfNotExistsAsync().block();
 
+		// Similar functionality provided by VectorStoreTextSearch.getSearchResultsAsync
 		var promptEmbedding = embeddingGenerationService.generateEmbeddingAsync(userPrompt).block();
 		var retrievalResult = collection.searchAsync(promptEmbedding.getVector(),
 				VectorSearchOptions.createDefault("embedding")).block();

@@ -10,6 +10,7 @@ import static dev.langchain4j.service.spring.AiServiceWiringMode.EXPLICIT;
 @Service
 class RecipeAiServices {
 
+	// For AiService API example without annotations
 	interface Standard {
 		Recipe find(dev.langchain4j.data.message.UserMessage userMessage);
 	}

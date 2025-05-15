@@ -26,6 +26,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
+	// No Spring Boot starter available yet
 	implementation 'com.microsoft.semantic-kernel:semantickernel-api'
 	implementation 'com.microsoft.semantic-kernel:semantickernel-aiservices-openai'
 	implementation "com.github.victools:jsonschema-generator"

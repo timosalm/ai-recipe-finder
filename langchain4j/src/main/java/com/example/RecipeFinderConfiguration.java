@@ -41,7 +41,7 @@ class RecipeFinderConfiguration {
                 .build();
     }
 
-    // Registers the auto-configured ChatModel bean for different AI providers under the generic name "chatModel"
+    // Registers the autoconfigured ChatModel bean for different AI providers under the generic name "chatModel"
     @Bean
     ChatModel chatModel(ChatModel chatModel) {
         return chatModel;

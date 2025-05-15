@@ -3,6 +3,8 @@
 Demo on how easy it is to build AI-driven applications with Spring Boot and different Java AI frameworks. 
 It also shows how to implement advanced techniques for the adaption of foundation models with Function Calling and RAG.
 
+[Slides: Java Meets AI - Empowering Spring Developers to Build Intelligent Apps](docs/slides.pdf)
+
 AI framework implementations:
 - [LangChain4j](langchain4j)
 - [Semantic Kernel](semantic-kernel)

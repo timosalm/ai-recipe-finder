@@ -3,7 +3,6 @@ package com.example.recipe;
 import com.example.semantickernel.DocumentEmbedding;
 import com.microsoft.semantickernel.Kernel;
 import com.microsoft.semantickernel.data.vectorsearch.VectorSearchResults;
-import com.microsoft.semantickernel.data.vectorsearch.VectorizedSearch;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStore;
 import com.microsoft.semantickernel.data.vectorstorage.VectorStoreRecordCollectionOptions;
 import com.microsoft.semantickernel.data.vectorstorage.options.VectorSearchOptions;
@@ -122,6 +121,7 @@ public class RecipeService {
 		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
 
 		var promptExecutionSettings = PromptExecutionSettings.builder()
+				// Structured Output configuration
 				.withJsonSchemaResponseFormat(Recipe.class)
 				.withMaxTokens(800)
 				.build();
@@ -131,6 +131,7 @@ public class RecipeService {
 				.build();
 
 		return 	defaultKernel.invokePromptAsync(combinedPromptTemplate, arguments, invocationContext)
+				// Structured Output configuration
 				.withResultTypeAutoConversion(Recipe.class)
 				.block().getResult();
 	}

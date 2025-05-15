@@ -43,6 +43,7 @@ class RecipeService {
     @Value("${app.available-ingredients-in-fridge}")
     private List<String> availableIngredientsInFridge;
 
+    // Constructor injection for autoconfigured AI services
     RecipeService(ChatModel chatModel, @Lazy RecipeAiServices.WithTools recipeAiServiceWithTools,
                   @Lazy RecipeAiServices.WithRag recipeAiServiceWithRag, @Lazy RecipeAiServices.WithToolsAndRag recipeAiServiceWithToolsAndRag,
                   Optional<ImageModel> imageModel, EmbeddingStoreIngestor embeddingStoreIngestor) {
@@ -88,17 +89,22 @@ class RecipeService {
 
     // AiService API without annotations
     private Recipe fetchRecipeFor(String ingredientsAsString) throws IOException {
+        // Prompt templates from the classpath
         var systemPrompt = fixJsonResponsePromptResource.getContentAsString(StandardCharsets.UTF_8);
         var userPromptTemplate = recipeForIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
 
+        // Builder for high-abstraction API
         var recipeAiService = AiServices.builder(RecipeAiServices.Standard.class)
                 .chatModel(chatModel)
                 .systemMessageProvider(chatMemoryId -> systemPrompt)
                 .build();
 
+        // Helper class for prompt templating
         var userMessage = PromptTemplate.from(userPromptTemplate)
                 .apply(Map.of("ingredients", ingredientsAsString))
                 .toUserMessage();
+
+        // The result is of type Recipe.class due to structured output
         return recipeAiService.find(userMessage);
     }
 

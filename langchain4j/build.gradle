@@ -18,7 +18,7 @@ repositories {
 }
 
 ext {
-	set('langChain4jVersion', "1.0.0-beta4")
+	set('langChain4jVersion', "1.0.0")
 }
 
 dependencies {
@@ -26,13 +26,13 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
-	implementation "dev.langchain4j:langchain4j-spring-boot-starter:${langChain4jVersion}"
-	implementation "dev.langchain4j:langchain4j-ollama-spring-boot-starter:${langChain4jVersion}"
-	implementation "dev.langchain4j:langchain4j-open-ai-spring-boot-starter:${langChain4jVersion}"
-	implementation "dev.langchain4j:langchain4j-azure-open-ai-spring-boot-starter:${langChain4jVersion}"
+	implementation 'dev.langchain4j:langchain4j-spring-boot-starter'
+	implementation 'dev.langchain4j:langchain4j-ollama-spring-boot-starter'
+	implementation 'dev.langchain4j:langchain4j-open-ai-spring-boot-starter'
+	implementation 'dev.langchain4j:langchain4j-azure-open-ai-spring-boot-starter'
 
-	implementation "dev.langchain4j:langchain4j-redis-spring-boot-starter:1.0.0-alpha1"
-	implementation "dev.langchain4j:langchain4j-document-parser-apache-pdfbox:${langChain4jVersion}"
+	implementation 'dev.langchain4j:langchain4j-community-redis-spring-boot-starter:1.0.0-beta5'
+	implementation 'dev.langchain4j:langchain4j-document-parser-apache-pdfbox'
 
 	implementation 'org.apache.commons:commons-lang3'
 
@@ -42,12 +42,11 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-/*
 dependencyManagement {
 	imports {
 		mavenBom "dev.langchain4j:langchain4j-bom:${langChain4jVersion}"
 	}
-}*/
+}
 
 
 tasks.named('test') {

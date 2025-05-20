@@ -27,14 +27,14 @@ class RecipeAiServices {
 		Recipe find(String ingredients);
 	}
 
-	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", contentRetriever = "embeddingStoreContentRetriever")
+	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", contentRetriever = "contentRetriever")
 	interface WithRag {
 		@UserMessage(fromResource = "/prompts/recipe-for-ingredients")
 		@SystemMessage(fromResource = "/prompts/fix-json-response-and-prefer-own-recipe")
 		Recipe find(String ingredients);
 	}
 
-	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", tools = {"recipeService"}, contentRetriever = "embeddingStoreContentRetriever")
+	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", tools = {"recipeService"}, contentRetriever = "contentRetriever")
 	interface WithToolsAndRag {
 		@UserMessage(fromResource = "/prompts/recipe-for-ingredients")
 		@SystemMessage(fromResource = "/prompts/fix-json-response-and-prefer-own-recipe")

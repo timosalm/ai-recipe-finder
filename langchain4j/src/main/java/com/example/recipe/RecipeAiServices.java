@@ -20,14 +20,18 @@ class RecipeAiServices {
 	// To support multiple AI providers without relying on annotations like @Profile,
 	// RecipeFinderConfiguration registers the auto-configured ChatModel bean under the generic name "chatModel".
 	// This breaks LangChain4j's current automatic wiring mechanism, so other AiService beans must also be wired explicitly.
-	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", tools = {"recipeService"})
+	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel",
+			// Provides tools (methods annotated with @Tool) from the RecipeService bean
+			tools = {"recipeService"})
 	interface WithTools {
 		@UserMessage(fromResource = "/prompts/recipe-for-available-ingredients")
 		@SystemMessage(fromResource = "/prompts/fix-json-response")
 		Recipe find(String ingredients);
 	}
 
-	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel", contentRetriever = "contentRetriever")
+	@AiService(wiringMode = EXPLICIT, chatModel = "chatModel",
+			// Enables RAG by registering an autoconfigured ContentRetriever bean
+			contentRetriever = "contentRetriever")
 	interface WithRag {
 		@UserMessage(fromResource = "/prompts/recipe-for-ingredients")
 		@SystemMessage(fromResource = "/prompts/fix-json-response-and-prefer-own-recipe")

@@ -1,3 +1,4 @@
+# Custom configuration properties due to missing Spring Boot integration
 semantickernel:
   azure-openai:
     endpoint: ${AZURE_OPENAI_ENDPOINT}

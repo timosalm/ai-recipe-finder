@@ -55,11 +55,14 @@ class RecipeService {
         this.embeddingStoreIngestor = embeddingStoreIngestor;
 	}
 
+    // ETL pipeline orchestrating the flow from raw data sources to a structured vector store
     void addRecipeDocumentForRag(Resource pdfResource) throws IOException {
         log.info("Add recipe document {} for rag", pdfResource.getFilename());
 
+        // Extract: Parses PDF document
         var documentParser = new ApachePdfBoxDocumentParser();
         var document = documentParser.parse(pdfResource.getInputStream());
+        // Transforms(Splits text into chunks based on defined character count) and loads data into vector database
         embeddingStoreIngestor.ingest(document);
     }
 
@@ -78,6 +81,7 @@ class RecipeService {
 
         if (imageModel.isPresent()) {
             log.info("Image generation for recipe '{}' started", recipe.name());
+            // Only low-level API available for image models
             var imagePromptTemplate = PromptTemplate.from(imageForRecipePromptResource.getContentAsString(StandardCharsets.UTF_8))
 						.apply(Map.of("recipe", recipe.name()));
 			var generatedImage = imageModel.get().generate(imagePromptTemplate.text()).content();
@@ -108,6 +112,7 @@ class RecipeService {
         return recipeAiService.find(userMessage);
     }
 
+    // Defines a tool
     @Tool("Fetches ingredients that are available at home")
     List<String> fetchIngredientsAvailableAtHome() {
         log.info("Fetching ingredients available at home function called by LLM");

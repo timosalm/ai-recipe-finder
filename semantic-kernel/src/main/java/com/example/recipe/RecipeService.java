@@ -74,16 +74,16 @@ public class RecipeService {
 		this.embeddingGenerationService = embeddingGenerationService;
 	}
 
-    void addRecipeDocumentForRag(Resource pdfResource) throws IOException {
+	// ETL pipeline orchestrating the flow from raw data sources to a structured vector store
+	void addRecipeDocumentForRag(Resource pdfResource) throws IOException {
         log.info("Add recipe document {} for rag", pdfResource.getFilename());
 
+		// Extract: Parses PDF documents
 		var pdfParser = new PDFParser(new RandomAccessReadBuffer(pdfResource.getInputStream()));
 		var document = pdfParser.parse();
+
+		// Transform: Splits text into chunks
 		var documents = new Splitter().split(document);
-
-		var collection = vectorStore.<String, DocumentEmbedding>getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
-		collection.createCollectionIfNotExistsAsync().block();
-
 		var textStripper = new PDFTextStripper();
 		var documentsContent = documents.stream().map(d -> {
 			try {
@@ -92,10 +92,15 @@ public class RecipeService {
 				return null;
 			}
 		}).filter((Objects::nonNull)).toList();
+
+		// Loads data into vector database
 		var embeddings = embeddingGenerationService.generateEmbeddingsAsync(documentsContent).block();
 		var documentsEmbeddings = IntStream.range(0, documentsContent.size())
 				.mapToObj(i -> new DocumentEmbedding(UUID.randomUUID().toString(), embeddings.get(i).getVector(), documentsContent.get(i)))
 				.toList();
+
+		var collection = vectorStore.<String, DocumentEmbedding>getCollection(VECTORSTORE_COLLECTION_NAME, collectionOptions);
+		collection.createCollectionIfNotExistsAsync().block();
 		collection.upsertBatchAsync(documentsEmbeddings, null).block();
 	}
 
@@ -150,6 +155,7 @@ public class RecipeService {
 		var fetchIngredientsAvailableAtHomeTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, "fetch_ingredients_available_at_home");
 		var invocationContext = InvocationContext.builder()
 				.withPromptExecutionSettings(promptExecutionSettings)
+				// Provides tool configured via a Kernel Plugin in RecipeFinderConfiguration
 				.withToolCallBehavior(ToolCallBehavior.requireKernelFunction(fetchIngredientsAvailableAtHomeTool))
 				.build();
 
@@ -158,6 +164,7 @@ public class RecipeService {
 				.block().getResult();
 	}
 
+	// Defines a tool
 	@DefineKernelFunction(name = "fetch_ingredients_available_at_home", description = "Fetches ingredients that are available at home",
             returnType = "java.util.List")
     public List<String> fetchIngredientsAvailableAtHome() {
@@ -171,7 +178,7 @@ public class RecipeService {
 		var userPromptTemplate = recipeForIngredientsPromptResource.getContentAsString(StandardCharsets.UTF_8);
 		var arguments = KernelFunctionArguments.builder().withVariable("ingredients", ingredientsStr).build();
 
-		// Retrieve
+		// Retrieve via a kernel function configured via a Kernel Plugin in RecipeFinderConfiguration
 		var retrieveDocumentsTool = kernelWithToolCalling.getFunction(RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME, TOOL_NAME_RECIPE_DOCUMENTS);
 		var functionArguments = KernelFunctionArguments.builder().withVariable("userPromptTemplate", userPromptTemplate).withVariable("ingredientsStr", ingredientsStr).build();
 		List<String> documents = retrieveDocumentsTool.invokeAsync(kernelWithToolCalling)
@@ -197,6 +204,7 @@ public class RecipeService {
 				.block().getResult();
 	}
 
+	// Defines a kernel function for the RAG retrieval
 	@DefineKernelFunction(name = TOOL_NAME_RECIPE_DOCUMENTS, description = "Retrieves related documents with recipes for a user prompt from the vector store",
 			returnType = "java.util.List")
 	public List<String> retrieveDocuments(String userPromptTemplate, String ingredientsStr) {

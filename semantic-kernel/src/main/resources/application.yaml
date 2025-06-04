@@ -14,6 +14,7 @@ server.tomcat.max-swallow-size: -1
 
 logging.pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS
 
+# Custom configuration properties due to missing Spring Boot integration
 semantickernel.redis:
   host: 127.0.0.1
   port: 6379

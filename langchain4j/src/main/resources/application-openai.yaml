@@ -1,4 +1,5 @@
 langchain4j:
+  # AI provider configuration
   open-ai:
     chat-model:
       api-key: ${OPENAI_KEY}

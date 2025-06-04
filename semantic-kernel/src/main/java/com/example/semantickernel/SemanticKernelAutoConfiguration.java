@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisPooled;
 
+// Custom autoconfiguration due to missing Spring Boot integration
 @Configuration
 class SemanticKernelAutoConfiguration {
 

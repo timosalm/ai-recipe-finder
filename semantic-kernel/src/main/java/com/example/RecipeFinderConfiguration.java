@@ -25,6 +25,7 @@ public class RecipeFinderConfiguration {
     public Kernel kernelWithToolCalling(ChatCompletionService chatCompletionService, RecipeService recipeService) {
         return Kernel.builder()
                 .withAIService(ChatCompletionService.class, chatCompletionService)
+                // Provides tools (methods annotated with @Tool) from the RecipeService instance
                 .withPlugin(KernelPluginFactory.createFromObject(recipeService, RECIPE_SERVICE_TOOLS_KERNEL_PLUGIN_NAME))
                 .build();
     }

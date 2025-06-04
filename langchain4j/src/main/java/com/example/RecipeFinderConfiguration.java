@@ -14,12 +14,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class RecipeFinderConfiguration {
 
-    @ConditionalOnProperty(prefix = "langchain4j.redis", name = "enabled", havingValue = "false")
+    // Registers the autoconfigured ChatModel bean for different AI providers under the generic name "chatModel"
     @Bean
-    EmbeddingStore<TextSegment> simpleEmbeddingStore() {
-        return new InMemoryEmbeddingStore<>();
+    ChatModel chatModel(ChatModel chatModel) {
+        return chatModel;
     }
 
+
+    // Configuration of ETL pipeline orchestrating the flow from raw data sources to a structured vector store
     @Bean
     EmbeddingStoreIngestor embeddingStoreIngestor (EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         return EmbeddingStoreIngestor.builder()
@@ -29,9 +31,9 @@ class RecipeFinderConfiguration {
                 .build();
     }
 
-    // Registers the autoconfigured ChatModel bean for different AI providers under the generic name "chatModel"
+    @ConditionalOnProperty(prefix = "langchain4j.redis", name = "enabled", havingValue = "false")
     @Bean
-    ChatModel chatModel(ChatModel chatModel) {
-        return chatModel;
+    EmbeddingStore<TextSegment> simpleEmbeddingStore() {
+        return new InMemoryEmbeddingStore<>();
     }
 }

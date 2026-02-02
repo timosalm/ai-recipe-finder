@@ -18,7 +18,7 @@ repositories {
 }
 
 ext {
-	set('langChain4jVersion', "1.0.1")
+	set('langChain4jVersion', "1.10.0")
 }
 
 dependencies {
@@ -31,7 +31,8 @@ dependencies {
 	implementation 'dev.langchain4j:langchain4j-open-ai-spring-boot-starter'
 	implementation 'dev.langchain4j:langchain4j-azure-open-ai-spring-boot-starter'
 
-	implementation 'dev.langchain4j:langchain4j-community-redis-spring-boot-starter:1.0.1-beta6'
+	implementation 'dev.langchain4j:langchain4j-community-redis-spring-boot-starter:1.10.0-beta18'
+	implementation 'redis.clients:jedis:7.1.0'
 	implementation 'dev.langchain4j:langchain4j-document-parser-apache-pdfbox'
 
 	implementation 'org.apache.commons:commons-lang3'

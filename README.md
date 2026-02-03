@@ -7,7 +7,7 @@ It also shows how to implement advanced techniques for the adaption of foundatio
 
 AI framework implementations:
 - [LangChain4j](langchain4j)
-- [Semantic Kernel](semantic-kernel)
+- [Semantic Kernel](semantic-kernel) (archived)
 - [Spring AI (external)](https://github.com/timosalm/spring-ai-recipe-finder)
 - [Spring AI MCP (external)](https://github.com/timosalm/spring-ai-recipe-finder-mcp)
 
